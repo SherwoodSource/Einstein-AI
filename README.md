@@ -5,8 +5,12 @@ This project implements a Retrieval-Augmented Generation (RAG) chatbot that allo
 
 ## Prerequisites
 
-- Python 3.10 or higher
+- Python 3.10 to 3.13 (Recommended)
+  - *Note: Python 3.14 is supported but may require newer package versions.*
 - `pip` (Python package installer)
+
+### Windows Requirements
+If you are on Windows, ensure you have the **Microsoft C++ Build Tools** installed, as some dependencies may need to compile native code. You can download them from [here](https://visualstudio.microsoft.com/visual-cpp-build-tools/).
 
 ## Installation
 
