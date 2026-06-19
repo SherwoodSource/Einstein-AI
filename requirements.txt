@@ -1,0 +1,10 @@
+langchain==0.1.13
+langchain-community==0.0.29
+langchain-text-splitters==0.0.2
+faiss-cpu
+sentence-transformers
+transformers
+torch
+numpy<2.0.0
+scipy<1.14.0
+pydantic<3,>=1
