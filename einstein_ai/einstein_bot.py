@@ -1,8 +1,7 @@
 from langchain_community.vectorstores import FAISS
-from langchain_community.embeddings import HuggingFaceEmbeddings
-from langchain_community.llms import HuggingFacePipeline
-from langchain.chains import RetrievalQA
-from langchain.prompts import PromptTemplate
+from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
+from langchain_classic.chains import RetrievalQA
+from langchain_core.prompts import PromptTemplate
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import torch
 
