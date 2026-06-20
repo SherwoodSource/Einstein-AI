@@ -6,6 +6,7 @@ This project implements a Retrieval-Augmented Generation (RAG) chatbot that allo
 ## Prerequisites
 
 - Python 3.10 to 3.13 (Recommended)
+  - *Note for Python 3.13+: Ensure you have a recent version of pip (`pip install -U pip`) and use the recommended installation command below to avoid build errors.*
   - *Note: Python 3.14 is supported but may require newer package versions.*
 - `pip` (Python package installer)
 
