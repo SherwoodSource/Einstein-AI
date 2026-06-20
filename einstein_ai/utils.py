@@ -2,14 +2,18 @@ import logging
 import os
 import sys
 import subprocess
-import pkg_resources
 
+# Set level to INFO for production-like behavior
 def setup_logger(name, log_file="einstein_ai.log", level=logging.INFO):
     """Function to setup as many loggers as you want"""
+    # Remove existing handlers to avoid duplicates
+    logger = logging.getLogger(name)
+    if logger.hasHandlers():
+        logger.handlers.clear()
+
     handler = logging.FileHandler(log_file)
     handler.setFormatter(logging.Formatter('%(asctime)s %(levelname)s %(name)s: %(message)s'))
 
-    logger = logging.getLogger(name)
     logger.setLevel(level)
     logger.addHandler(handler)
 
@@ -31,9 +35,12 @@ def sync_dependencies():
 
     logger.info("Checking for dependency updates...")
     try:
-        # This is a simple implementation. In a real-world scenario,
-        # we'd compare versions more robustly.
-        subprocess.check_call([sys.executable, "-m", "pip", "install", "-U", "-r", req_file])
+        # Redirect stdout/stderr to devnull to keep the launch clean
+        subprocess.check_call(
+            [sys.executable, "-m", "pip", "install", "-U", "-r", req_file],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL
+        )
         logger.info("Dependencies are up to date.")
     except Exception as e:
         logger.error(f"Failed to update dependencies: {e}")

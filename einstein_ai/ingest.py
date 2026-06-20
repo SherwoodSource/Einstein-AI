@@ -1,5 +1,7 @@
 import os
-import requests
+# Set USER_AGENT at the very top to avoid warnings from LangChain/HuggingFace
+os.environ["USER_AGENT"] = "EinsteinAI/1.0 (Retriever Bot)"
+
 from dotenv import load_dotenv
 from langchain_community.document_loaders import (
     DirectoryLoader,
@@ -29,7 +31,7 @@ def ingest_docs(custom_source=None):
     documents = []
 
     # 1. Load from local data directory (txt, pdf)
-    print(f"Loading local documents from {data_path}...")
+    logger.info(f"Loading local documents from {data_path}...")
 
     # Text files
     txt_loader = DirectoryLoader(
@@ -51,7 +53,7 @@ def ingest_docs(custom_source=None):
     # 2. Handle web sources or custom imports
     if custom_source:
         if custom_source.startswith("http"):
-            print(f"Loading from URL: {custom_source}")
+            logger.info(f"Loading from URL: {custom_source}")
             web_loader = WebBaseLoader(custom_source)
             documents.extend(web_loader.load())
         elif os.path.exists(custom_source):
@@ -62,27 +64,28 @@ def ingest_docs(custom_source=None):
 
     # If no local docs and no custom source, load from default online sources
     if not documents and not custom_source:
-        print("No local documents found. Loading from online sources...")
+        logger.info("No local documents found. Loading from online sources...")
         for key, url in ONLINE_SOURCES.items():
-            print(f"Loading {key} from {url}...")
+            logger.info(f"Loading {key} from {url}...")
             web_loader = WebBaseLoader(url)
             documents.extend(web_loader.load())
 
     if not documents:
-        print("No documents found to index.")
+        logger.warning("No documents found to index.")
         return
 
-    print(f"Splitting {len(documents)} documents into chunks...")
-    text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
+    # Use smaller chunk size to stay within model context limits (TinyLlama 2048)
+    logger.info(f"Splitting {len(documents)} documents into chunks...")
+    text_splitter = RecursiveCharacterTextSplitter(chunk_size=600, chunk_overlap=120)
     texts = text_splitter.split_documents(documents)
 
-    print("Initializing embeddings model...")
+    logger.info("Initializing embeddings model...")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    print("Building FAISS index...")
+    logger.info("Building FAISS index...")
     db = FAISS.from_documents(texts, embeddings)
     db.save_local("einstein_ai/faiss_index")
-    print(f"Successfully created FAISS index with {len(texts)} chunks.")
+    logger.info(f"Successfully created FAISS index with {len(texts)} chunks.")
 
 if __name__ == "__main__":
     import sys

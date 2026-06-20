@@ -1,4 +1,7 @@
 import os
+# Set USER_AGENT at the very top to avoid warnings from LangChain/HuggingFace
+os.environ["USER_AGENT"] = "EinsteinAI/1.0 (Retriever Bot)"
+
 from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
@@ -29,9 +32,24 @@ def get_einstein_bot():
         dtype=torch.float16 if torch.cuda.is_available() else torch.float32
     )
 
-    model.generation_config.max_new_tokens = 256
-    model.generation_config.temperature = 0.7
-    model.generation_config.do_sample = True
+    # Configure generation parameters.
+    # Passing them explicitly in the pipeline call while ensuring the model
+    # config does not have conflicting values is the standard way to clear warnings.
+    gen_kwargs = {
+        "max_new_tokens": 256,
+        "temperature": 0.7,
+        "do_sample": True,
+        "pad_token_id": tokenizer.pad_token_id,
+        "eos_token_id": tokenizer.eos_token_id,
+    }
+
+    # Pre-set the config to avoid "both set" warning
+    for key, value in gen_kwargs.items():
+        setattr(model.config, key, value)
+
+    # Clear max_length to avoid conflict with max_new_tokens
+    if hasattr(model.config, "max_length"):
+        model.config.max_length = None
 
     pipe = pipeline(
         "text-generation",
@@ -54,25 +72,11 @@ Context: {context}</s>
 
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Improved retrieval: check for trigger words in the question
-    # and adjust the search accordingly. For now, we increase 'k'
-    # if triggers are found to ensure multi-source coverage.
-
-    def get_k_value(query):
-        query_lower = query.lower()
-        for category, triggers in SOURCE_TRIGGERS.items():
-            for trigger in triggers:
-                if trigger in query_lower:
-                    return 6 # Increase context if triggers found
-        return 3
-
-    # RetrievalQA doesn't easily support dynamic k in the chain,
-    # so we'll use a reasonably high default.
-
+    # Set k=3 and use smaller chunks in ingestion to avoid exceeding 2048 limit.
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=db.as_retriever(search_kwargs={"k": 5}),
+        retriever=db.as_retriever(search_kwargs={"k": 3}),
         return_source_documents=False,
         chain_type_kwargs={"prompt": prompt}
     )
@@ -80,7 +84,6 @@ Context: {context}</s>
     return chain
 
 if __name__ == "__main__":
-    print("Initializing Einstein AI...")
     bot = get_einstein_bot()
     import sys
     query = sys.argv[1] if len(sys.argv) > 1 else "What is the relationship between space and time?"
