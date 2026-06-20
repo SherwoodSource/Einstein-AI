@@ -16,9 +16,9 @@ If you are on Windows, ensure you have the **Microsoft C++ Build Tools** install
 
 1. Clone the repository to your local machine.
 2. Navigate to the project root directory.
-3. Install the required dependencies:
+3. Install the required dependencies (use the `-U` flag to ensure all conflicting versions are updated):
    ```bash
-   pip install -r requirements.txt
+   pip install -U -r requirements.txt
    ```
 4. Create a file named `HF_TOKEN.env` in the root directory and add your Hugging Face API token:
    ```text
