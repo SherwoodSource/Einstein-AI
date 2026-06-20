@@ -25,6 +25,13 @@ If you are on Windows, ensure you have the **Microsoft C++ Build Tools** install
    ```text
    HF_TOKEN=your_huggingface_token_here
    ```
+5. (Optional) Review `SOURCES.env` to manage online Einstein sources and trigger words.
+
+## Running the Bot (GUI Mode - Windows)
+
+On Windows, you can launch the bot with a clean graphical interface and no background terminal:
+- Double-click **`EinsteinAI.bat`**
+- Or run `powershell -File EinsteinAI.ps1`
 
 ## Setup (Data Ingestion)
 
@@ -54,6 +61,9 @@ Type your questions at the prompt. To end the session and close the bot, type `e
   - `ingest.py`: Script to process text data into the FAISS index.
 - `main.py`: Interactive CLI entry point.
 - `requirements.txt`: List of Python dependencies.
+- `SOURCES.env`: Configuration for online text sources and triggers.
+- `EinsteinAI.ps1`: PowerShell-based graphical interface.
+- `EinsteinAI.bat`: Silent launcher for the Windows GUI.
 
 ## Troubleshooting
 

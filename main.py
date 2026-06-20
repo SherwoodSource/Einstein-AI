@@ -2,10 +2,21 @@ from einstein_ai.einstein_bot import get_einstein_bot
 from einstein_ai.utils import logger, sync_dependencies
 import sys
 import os
+import subprocess
 
 def main():
     # Attempt auto-update on launch
     sync_dependencies()
+
+    # Check if we should launch GUI or CLI
+    # If on Windows and no arguments, prefer GUI
+    if os.name == 'nt' and len(sys.argv) == 1:
+        # Check if the PowerShell script exists
+        ps_script = os.path.join(os.getcwd(), "EinsteinAI.ps1")
+        if os.path.exists(ps_script):
+            print("Launching Einstein AI GUI...")
+            subprocess.Popen(["powershell.exe", "-WindowStyle", "Hidden", "-File", ps_script])
+            sys.exit(0)
 
     print("========================================")
     print("      Einstein AI Initializing...      ")

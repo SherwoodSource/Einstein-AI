@@ -14,9 +14,16 @@ public class WinApi {
 }
 "@
 
-# Hide the console window
-$consoleHandle = [WinApi]::GetConsoleWindow()
-[WinApi]::ShowWindow($consoleHandle, [WinApi]::SW_HIDE)
+# Function to hide the console window
+function Hide-Console {
+    $consoleHandle = [WinApi]::GetConsoleWindow()
+    if ($consoleHandle -ne [IntPtr]::Zero) {
+        [WinApi]::ShowWindow($consoleHandle, [WinApi]::SW_HIDE)
+    }
+}
+
+# Try to hide the console immediately
+Hide-Console
 
 Add-Type -AssemblyName System.Windows.Forms
 Add-Type -AssemblyName System.Drawing
@@ -26,11 +33,14 @@ $form = New-Object System.Windows.Forms.Form
 $form.Text = "Einstein AI"
 $form.Size = New-Object System.Drawing.Size(600, 500)
 $form.StartPosition = "CenterScreen"
+$form.FormBorderStyle = "FixedDialog"
+$form.MaximizeBox = $false
 
 $outputBox = New-Object System.Windows.Forms.RichTextBox
 $outputBox.Location = New-Object System.Drawing.Point(10, 10)
 $outputBox.Size = New-Object System.Drawing.Size(560, 300)
 $outputBox.ReadOnly = $true
+$outputBox.Font = New-Object System.Drawing.Font("Consolas", 10)
 $form.Controls.Add($outputBox)
 
 $inputBox = New-Object System.Windows.Forms.TextBox
@@ -56,6 +66,8 @@ $urlButton.Size = New-Object System.Drawing.Size(120, 30)
 $urlButton.Text = "Import URL"
 $form.Controls.Add($urlButton)
 
+$outputBox.AppendText("Einstein AI System Started.`n")
+
 # Function to run Python and get response
 function Get-EinsteinResponse($query) {
     # Escape single quotes for Python command line
@@ -65,13 +77,18 @@ function Get-EinsteinResponse($query) {
     $process.StartInfo.Arguments = "-m einstein_ai.einstein_bot `"$escapedQuery`""
     $process.StartInfo.UseShellExecute = $false
     $process.StartInfo.RedirectStandardOutput = $true
+    $process.StartInfo.RedirectStandardError = $true
     $process.StartInfo.CreateNoWindow = $true
     $process.Start() | Out-Null
     $result = $process.StandardOutput.ReadToEnd()
+    $err = $process.StandardError.ReadToEnd()
     $process.WaitForExit()
 
     # Filter out initialization messages
     $cleanResult = $result -replace "(?s).*Einstein AI\.\.\.`n", ""
+    if ($cleanResult.Trim() -eq "") {
+        return "Error: " + $err
+    }
     return $cleanResult.Trim()
 }
 
@@ -80,10 +97,11 @@ $sendButton.Add_Click({
     if ($query -ne "") {
         $outputBox.AppendText("You: $query`n")
         $inputBox.Text = ""
-        $outputBox.AppendText("Einstein is thinking (Initial loading take ~30s)...`n")
+        $outputBox.AppendText("Einstein is thinking (This may take a moment)...`n")
         $form.Refresh()
         $response = Get-EinsteinResponse $query
         $outputBox.AppendText("Einstein: $response`n`n")
+        $outputBox.ScrollToCaret()
     }
 })
 
@@ -105,12 +123,13 @@ $importButton.Add_Click({
         $process.WaitForExit()
 
         $outputBox.AppendText("Import complete.`n`n")
+        $outputBox.ScrollToCaret()
     }
 })
 
 $urlButton.Add_Click({
     $url = [Microsoft.VisualBasic.Interaction]::InputBox("Enter URL to Einstein source:", "Import URL", "https://")
-    if ($url -ne "") {
+    if ($url -ne "" -and $url -ne "https://") {
         $outputBox.AppendText("Importing from URL: $url...`n")
         $form.Refresh()
 
@@ -124,7 +143,9 @@ $urlButton.Add_Click({
         $process.WaitForExit()
 
         $outputBox.AppendText("Import complete.`n`n")
+        $outputBox.ScrollToCaret()
     }
 })
 
+# Show the form
 $form.ShowDialog()

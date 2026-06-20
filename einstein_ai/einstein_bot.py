@@ -14,12 +14,6 @@ from einstein_ai.utils import logger
 # Load HF_TOKEN and potentially source URLs from environment file
 load_dotenv("HF_TOKEN.env")
 
-# Source mapping with trigger words
-SOURCE_TRIGGERS = {
-    "relativity": ["spacetime", "time", "gravity", "mass", "light", "energy"],
-    "meaning": ["philosophy", "belief", "science", "knowledge", "society"]
-}
-
 def get_einstein_bot():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     db = FAISS.load_local("einstein_ai/faiss_index", embeddings, allow_dangerous_deserialization=True)
@@ -32,24 +26,17 @@ def get_einstein_bot():
         dtype=torch.float16 if torch.cuda.is_available() else torch.float32
     )
 
-    # Configure generation parameters.
-    # Passing them explicitly in the pipeline call while ensuring the model
-    # config does not have conflicting values is the standard way to clear warnings.
-    gen_kwargs = {
-        "max_new_tokens": 256,
-        "temperature": 0.7,
-        "do_sample": True,
-        "pad_token_id": tokenizer.pad_token_id,
-        "eos_token_id": tokenizer.eos_token_id,
-    }
+    # Define generation config to avoid any mixing of parameters
+    # This is the most surgical way to avoid "both max_new_tokens and max_length set"
+    model.generation_config.max_new_tokens = 256
+    model.generation_config.max_length = 2048
+    model.generation_config.temperature = 0.7
+    model.generation_config.do_sample = True
+    model.generation_config.pad_token_id = tokenizer.pad_token_id
+    model.generation_config.eos_token_id = tokenizer.eos_token_id
 
-    # Pre-set the config to avoid "both set" warning
-    for key, value in gen_kwargs.items():
-        setattr(model.config, key, value)
-
-    # Clear max_length to avoid conflict with max_new_tokens
-    if hasattr(model.config, "max_length"):
-        model.config.max_length = None
+    # We update the model.config as well to ensure total consistency
+    model.config.max_new_tokens = 256
 
     pipe = pipeline(
         "text-generation",
@@ -72,7 +59,7 @@ Context: {context}</s>
 
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Set k=3 and use smaller chunks in ingestion to avoid exceeding 2048 limit.
+    # Set k=3 to stay within 2048 token limit
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
