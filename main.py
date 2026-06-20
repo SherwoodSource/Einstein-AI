@@ -1,7 +1,12 @@
 from einstein_ai.einstein_bot import get_einstein_bot
+from einstein_ai.utils import logger, sync_dependencies
 import sys
+import os
 
 def main():
+    # Attempt auto-update on launch
+    sync_dependencies()
+
     print("========================================")
     print("      Einstein AI Initializing...      ")
     print("========================================")
@@ -9,7 +14,7 @@ def main():
     try:
         bot = get_einstein_bot()
     except Exception as e:
-        print(f"Error initializing Einstein AI: {e}")
+        logger.error(f"Error initializing Einstein AI: {e}")
         sys.exit(1)
 
     print("\nEinstein AI is ready. You can ask me anything.")
@@ -37,6 +42,7 @@ def main():
             print("\n\nEinstein: Farewell, my friend. Keep wondering.")
             break
         except Exception as e:
+            logger.error(f"Einstein encountered an error: {e}")
             print(f"\nEinstein: I am sorry, I encountered an error: {e}\n")
 
 if __name__ == "__main__":
