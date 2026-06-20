@@ -20,6 +20,10 @@ If you are on Windows, ensure you have the **Microsoft C++ Build Tools** install
    ```bash
    pip install -r requirements.txt
    ```
+4. Create a file named `HF_TOKEN.env` in the root directory and add your Hugging Face API token:
+   ```text
+   HF_TOKEN=your_huggingface_token_here
+   ```
 
 ## Setup (Data Ingestion)
 
@@ -49,3 +53,15 @@ Type your questions at the prompt. To exit the session, type `exit` or `quit`.
   - `ingest.py`: Script to process text data into the FAISS index.
 - `main.py`: Interactive CLI entry point.
 - `requirements.txt`: List of Python dependencies.
+
+## Troubleshooting
+
+### ModuleNotFoundError: No module named 'langchain.chains'
+This usually occurs if `langchain` was not installed correctly or if there is a version conflict. Ensure you have run:
+```bash
+pip install -r requirements.txt
+```
+If the error persists, try installing the package explicitly:
+```bash
+pip install langchain==0.3.14
+```

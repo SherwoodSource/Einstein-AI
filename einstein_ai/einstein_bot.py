@@ -1,9 +1,14 @@
+import os
+from dotenv import load_dotenv
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings, HuggingFacePipeline
 from langchain.chains import RetrievalQA
 from langchain_core.prompts import PromptTemplate
 from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import torch
+
+# Load HF_TOKEN from environment file
+load_dotenv("HF_TOKEN.env")
 
 def get_einstein_bot():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")

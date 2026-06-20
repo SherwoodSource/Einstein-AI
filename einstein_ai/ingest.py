@@ -1,8 +1,12 @@
 import os
+from dotenv import load_dotenv
 from langchain_community.document_loaders import DirectoryLoader, TextLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
+
+# Load HF_TOKEN from environment file
+load_dotenv("HF_TOKEN.env")
 
 def ingest_docs():
     data_path = "einstein_ai/data/"

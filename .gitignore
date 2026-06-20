@@ -3,3 +3,4 @@ __pycache__/
 *$py.class
 bot_error.log
 einstein_ai/faiss_index/
+HF_TOKEN.env
