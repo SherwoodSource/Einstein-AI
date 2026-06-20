@@ -43,7 +43,7 @@ Once the index has been created, you can start the interactive session with Eins
 python main.py
 ```
 
-Type your questions at the prompt. To exit the session, type `exit` or `quit`.
+Type your questions at the prompt. To end the session and close the bot, type `exit`, `quit`, `bye`, or `stop`.
 
 ## Project Structure
 

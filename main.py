@@ -13,12 +13,14 @@ def main():
         sys.exit(1)
 
     print("\nEinstein AI is ready. You can ask me anything.")
-    print("Type 'exit' or 'quit' to end the session.\n")
+    print("To end the session, type 'exit', 'quit', 'bye', or 'stop'.\n")
 
     while True:
         try:
             user_input = input("You: ")
-            if user_input.lower() in ['exit', 'quit']:
+
+            # Check for multiple exit commands
+            if user_input.lower().strip() in ['exit', 'quit', 'bye', 'goodbye', 'stop']:
                 print("\nEinstein: Farewell, my friend. Keep wondering.")
                 break
 
