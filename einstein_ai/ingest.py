@@ -39,14 +39,19 @@ def get_online_sources():
     return sources
 
 def cache_web_content(url, name):
-    """Downloads content from URL and caches it locally"""
+    """Downloads content from URL and caches it locally with correct extension"""
     cache_dir = os.path.join("einstein_ai", "data", "cache")
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
+    # Determine extension
+    ext = ".txt"
+    if url.lower().endswith(".pdf"):
+        ext = ".pdf"
+
     # Create a safe filename
     safe_name = "".join([c for c in name if c.isalnum() or c in (' ', '.', '_')]).rstrip()
-    cache_path = os.path.join(cache_dir, f"{safe_name}.txt")
+    cache_path = os.path.join(cache_dir, f"{safe_name}{ext}")
 
     if os.path.exists(cache_path):
         logger.info(f"Using cached version of {name} from {cache_path}")
@@ -54,10 +59,11 @@ def cache_web_content(url, name):
 
     logger.info(f"Caching {name} from {url} to {cache_path}...")
     try:
-        response = requests.get(url)
+        response = requests.get(url, stream=True)
         response.raise_for_status()
-        with open(cache_path, "w", encoding="utf-8") as f:
-            f.write(response.text)
+        with open(cache_path, "wb") as f:
+            for chunk in response.iter_content(chunk_size=8192):
+                f.write(chunk)
         return cache_path
     except Exception as e:
         logger.error(f"Failed to cache {url}: {e}")
@@ -68,69 +74,47 @@ def ingest_docs(custom_source=None):
     if not os.path.exists(data_path):
         os.makedirs(data_path)
 
+    # 1. Handle web sources or custom imports (Download and Cache)
+    if custom_source:
+        if custom_source.startswith("http"):
+            logger.info(f"Loading from URL: {custom_source}")
+            cache_web_content(custom_source, "CustomSource")
+        elif os.path.exists(custom_source):
+            # If it's a local file but not in the data dir, copy it?
+            # Or just let it be loaded later. Let's copy it to data/ for persistence.
+            import shutil
+            dest = os.path.join(data_path, os.path.basename(custom_source))
+            if os.path.abspath(custom_source) != os.path.abspath(dest):
+                shutil.copy2(custom_source, dest)
+                logger.info(f"Copied {custom_source} to {dest}")
+
+    # 2. Populate cache from SOURCES.env
+    online_sources = get_online_sources()
+    if online_sources:
+        for source in online_sources:
+            cache_web_content(source['url'], source['name'])
+
+    # 3. Load all documents recursively from data_path (including cache)
+    logger.info(f"Loading all documents from {data_path}...")
     documents = []
 
-    # 1. Load from local data directory (including cache)
-    logger.info(f"Loading local documents from {data_path}...")
-
-    # Recursive search includes cache/
+    # Text files - Recursive
     txt_loader = DirectoryLoader(
         data_path,
         glob="**/*.txt",
         loader_cls=TextLoader,
-        loader_kwargs={"encoding": "utf-8"}
+        loader_kwargs={"encoding": "utf-8"},
+        recursive=True
     )
     documents.extend(txt_loader.load())
 
+    # PDF files - Recursive
     pdf_loader = DirectoryLoader(
         data_path,
         glob="**/*.pdf",
-        loader_cls=PyPDFLoader
+        loader_cls=PyPDFLoader,
+        recursive=True
     )
-    documents.extend(pdf_loader.load())
-
-    # 2. Handle web sources or custom imports
-    if custom_source:
-        if custom_source.startswith("http"):
-            logger.info(f"Loading from URL: {custom_source}")
-            # Cache it first
-            cached_file = cache_web_content(custom_source, "CustomSource")
-            if cached_file:
-                documents.extend(TextLoader(cached_file, encoding="utf-8").load())
-            else:
-                web_loader = WebBaseLoader(custom_source)
-                documents.extend(web_loader.load())
-        elif os.path.exists(custom_source):
-            if custom_source.endswith(".pdf"):
-                documents.extend(PyPDFLoader(custom_source).load())
-            else:
-                documents.extend(TextLoader(custom_source, encoding="utf-8").load())
-
-    # 3. Load from SOURCES.env
-    online_sources = get_online_sources()
-    if online_sources:
-        for source in online_sources:
-            cached_file = cache_web_content(source['url'], source['name'])
-            if cached_file:
-                # We already loaded local docs, which includes cache.
-                # Avoid duplicates.
-                pass
-            else:
-                logger.info(f"Fallback loading {source['name']} directly from {source['url']}...")
-                try:
-                    web_loader = WebBaseLoader(source['url'])
-                    documents.extend(web_loader.load())
-                except Exception as e:
-                    logger.error(f"Failed to load {source['url']}: {e}")
-
-    # Re-read documents after potential caching to ensure everything is fresh
-    # Actually, the logic above is a bit circular. Let's simplify.
-
-    # Clear and reload to be certain
-    documents = []
-    txt_loader = DirectoryLoader(data_path, glob="**/*.txt", loader_cls=TextLoader, loader_kwargs={"encoding": "utf-8"})
-    documents.extend(txt_loader.load())
-    pdf_loader = DirectoryLoader(data_path, glob="**/*.pdf", loader_cls=PyPDFLoader)
     documents.extend(pdf_loader.load())
 
     if not documents:
