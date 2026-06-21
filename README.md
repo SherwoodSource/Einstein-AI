@@ -27,12 +27,6 @@ If you are on Windows, ensure you have the **Microsoft C++ Build Tools** install
    ```
 5. (Optional) Review `SOURCES.env` to manage online Einstein sources and trigger words.
 
-## Running the Bot (GUI Mode - Windows)
-
-On Windows, you can launch the bot with a clean graphical interface and no background terminal:
-- Double-click **`EinsteinAI.bat`**
-- Or run `powershell -File EinsteinAI.ps1`
-
 ## Setup (Data Ingestion)
 
 Before running the bot for the first time, or if you update the source texts in `einstein_ai/data/`, you need to build the FAISS vector index:
@@ -52,6 +46,12 @@ python main.py
 ```
 
 Type your questions at the prompt. To end the session and close the bot, type `exit`, `quit`, `bye`, or `stop`.
+
+## Running the Bot (GUI Mode - Windows)
+
+On Windows, you can launch the bot with a clean graphical interface and no background terminal:
+- Double-click **`EinsteinAI.bat`**
+- Or run `powershell -File EinsteinAI.ps1`
 
 ## Project Structure
 
