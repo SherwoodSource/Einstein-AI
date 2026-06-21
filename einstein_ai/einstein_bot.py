@@ -15,26 +15,6 @@ from einstein_ai.utils import logger
 load_dotenv("HF_TOKEN.env")
 load_dotenv("SOURCES.env")
 
-def get_online_sources():
-    """Parses SOURCES.env for Einstein source URLs and triggers"""
-    sources = []
-    if os.path.exists("SOURCES.env"):
-        with open("SOURCES.env", "r") as f:
-            for line in f:
-                line = line.strip()
-                if line and not line.startswith("#"):
-                    try:
-                        # Format: NAME=URL|T1,T2
-                        parts = line.split("=", 1)
-                        if len(parts) == 2:
-                            val_parts = parts[1].split("|")
-                            url = val_parts[0]
-                            triggers = val_parts[1].split(",") if len(val_parts) > 1 else []
-                            sources.append({"name": parts[0], "url": url, "triggers": triggers})
-                    except Exception as e:
-                        logger.error(f"Error parsing line in SOURCES.env: {line}. {e}")
-    return sources
-
 def get_einstein_bot():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     db = FAISS.load_local("einstein_ai/faiss_index", embeddings, allow_dangerous_deserialization=True)
@@ -47,7 +27,6 @@ def get_einstein_bot():
         dtype=torch.float16 if torch.cuda.is_available() else torch.float32
     )
 
-    # Define generation config to avoid any mixing of parameters
     model.generation_config.max_new_tokens = 256
     model.generation_config.max_length = 2048
     model.generation_config.temperature = 0.7
@@ -67,7 +46,8 @@ def get_einstein_bot():
     llm = HuggingFacePipeline(pipeline=pipe)
 
     template = """<|system|>
-You are Albert Einstein. Use the following pieces of context from your own writings to answer the user's question.
+You are Albert Einstein. Use the following pieces of context from your own writings AND your past conversations with this user to answer the question.
+You have a long-term memory of previous interactions, which are included in the context.
 Maintain a wise, humble, and scientific tone.
 
 Context: {context}</s>
@@ -78,13 +58,11 @@ Context: {context}</s>
 
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Standard retriever with fixed context limit
-    retriever = db.as_retriever(search_kwargs={"k": 4})
-
+    # Set k=5 to allow for more context including history
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=retriever,
+        retriever=db.as_retriever(search_kwargs={"k": 5}),
         return_source_documents=False,
         chain_type_kwargs={"prompt": prompt}
     )

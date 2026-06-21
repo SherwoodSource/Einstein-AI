@@ -1,5 +1,6 @@
 from einstein_ai.einstein_bot import get_einstein_bot
-from einstein_ai.utils import logger, sync_dependencies
+from einstein_ai.utils import logger, sync_dependencies, log_interaction
+from einstein_ai.ingest import ingest_docs
 import sys
 import os
 import subprocess
@@ -7,6 +8,13 @@ import subprocess
 def main():
     # Attempt auto-update on launch
     sync_dependencies()
+
+    # Self-learning: re-index on launch to incorporate new history/sources
+    print("Einstein AI is refreshing its memory...")
+    try:
+        ingest_docs()
+    except Exception as e:
+        logger.warning(f"Memory refresh failed: {e}")
 
     # Check if we should launch GUI or CLI
     # If on Windows and no arguments, prefer GUI
@@ -45,9 +53,13 @@ def main():
 
             print("\nEinstein is thinking...", end="\r")
             result = bot.invoke({"query": user_input})
+            bot_response = result['result']
+
+            # Log the interaction for future learning
+            log_interaction(user_input, bot_response)
 
             print(" " * 30, end="\r") # Clear thinking message
-            print(f"Einstein: {result['result']}\n")
+            print(f"Einstein: {bot_response}\n")
 
         except KeyboardInterrupt:
             print("\n\nEinstein: Farewell, my friend. Keep wondering.")

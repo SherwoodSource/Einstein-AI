@@ -2,6 +2,7 @@ import logging
 import os
 import sys
 import subprocess
+from datetime import datetime
 
 # Set level to INFO for production-like behavior
 def setup_logger(name, log_file="einstein_ai.log", level=logging.INFO):
@@ -52,3 +53,23 @@ def get_data_dir():
 def get_index_dir():
     """Returns the path to the faiss_index directory"""
     return os.path.join(os.path.dirname(__file__), "faiss_index")
+
+def get_history_dir():
+    """Returns the path to the history directory"""
+    history_dir = os.path.join(os.path.dirname(__file__), "history")
+    if not os.path.exists(history_dir):
+        os.makedirs(history_dir)
+    return history_dir
+
+def log_interaction(user_input, bot_response):
+    """Logs a single interaction to the current session's history file"""
+    history_dir = get_history_dir()
+    # One file per day to keep things organized
+    filename = f"chat_{datetime.now().strftime('%Y-%m-%d')}.txt"
+    filepath = os.path.join(history_dir, filename)
+
+    timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+
+    with open(filepath, "a", encoding="utf-8") as f:
+        f.write(f"[{timestamp}] USER: {user_input}\n")
+        f.write(f"[{timestamp}] EINSTEIN: {bot_response}\n\n")

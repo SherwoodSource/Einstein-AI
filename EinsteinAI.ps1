@@ -66,11 +66,16 @@ $urlButton.Size = New-Object System.Drawing.Size(120, 30)
 $urlButton.Text = "Import URL"
 $form.Controls.Add($urlButton)
 
+$refreshButton = New-Object System.Windows.Forms.Button
+$refreshButton.Location = New-Object System.Drawing.Point(270, 360)
+$refreshButton.Size = New-Object System.Drawing.Size(120, 30)
+$refreshButton.Text = "Refresh Memory"
+$form.Controls.Add($refreshButton)
+
 $outputBox.AppendText("Einstein AI System Started.`n")
 
 # Function to run Python and get response
 function Get-EinsteinResponse($query) {
-    # Escape single quotes for Python command line
     $escapedQuery = $query -replace "'", "\'"
     $process = New-Object System.Diagnostics.Process
     $process.StartInfo.FileName = "python"
@@ -84,7 +89,6 @@ function Get-EinsteinResponse($query) {
     $err = $process.StandardError.ReadToEnd()
     $process.WaitForExit()
 
-    # Filter out initialization messages
     $cleanResult = $result -replace "(?s).*Einstein AI\.\.\.`n", ""
     if ($cleanResult.Trim() -eq "") {
         return "Error: " + $err
@@ -92,16 +96,30 @@ function Get-EinsteinResponse($query) {
     return $cleanResult.Trim()
 }
 
+# Function to log interaction from PowerShell
+function Log-Interaction($query, $response) {
+    $pythonCmd = "from einstein_ai.utils import log_interaction; log_interaction(r'''$query''', r'''$response''')"
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo.FileName = "python"
+    $process.StartInfo.Arguments = "-c `"$pythonCmd`""
+    $process.StartInfo.UseShellExecute = $false
+    $process.StartInfo.CreateNoWindow = $true
+    $process.Start() | Out-Null
+    $process.WaitForExit()
+}
+
 $sendButton.Add_Click({
     $query = $inputBox.Text
     if ($query -ne "") {
         $outputBox.AppendText("You: $query`n")
         $inputBox.Text = ""
-        $outputBox.AppendText("Einstein is thinking (This may take a moment)...`n")
+        $outputBox.AppendText("Einstein is thinking...`n")
         $form.Refresh()
         $response = Get-EinsteinResponse $query
         $outputBox.AppendText("Einstein: $response`n`n")
         $outputBox.ScrollToCaret()
+
+        Log-Interaction $query $response
     }
 })
 
@@ -122,7 +140,10 @@ $importButton.Add_Click({
         $process.Start() | Out-Null
         $process.WaitForExit()
 
-        $outputBox.AppendText("Import complete.`n`n")
+        $outputBox.AppendText("Import complete. Refreshing memory...`n")
+        $form.Refresh()
+        # Ingest already rebuilds index, but let's be explicit
+        $outputBox.AppendText("Memory refreshed.`n`n")
         $outputBox.ScrollToCaret()
     }
 })
@@ -142,9 +163,26 @@ $urlButton.Add_Click({
         $process.Start() | Out-Null
         $process.WaitForExit()
 
-        $outputBox.AppendText("Import complete.`n`n")
+        $outputBox.AppendText("Import complete. Refreshing memory...`n")
+        $form.Refresh()
+        $outputBox.AppendText("Memory refreshed.`n`n")
         $outputBox.ScrollToCaret()
     }
+})
+
+$refreshButton.Add_Click({
+    $outputBox.AppendText("Refreshing memory from history and sources...`n")
+    $form.Refresh()
+    $process = New-Object System.Diagnostics.Process
+    $process.StartInfo.FileName = "python"
+    $process.StartInfo.Arguments = "-m einstein_ai.ingest"
+    $process.StartInfo.UseShellExecute = $false
+    $process.StartInfo.RedirectStandardOutput = $true
+    $process.StartInfo.CreateNoWindow = $true
+    $process.Start() | Out-Null
+    $process.WaitForExit()
+    $outputBox.AppendText("Memory refresh complete.`n`n")
+    $outputBox.ScrollToCaret()
 })
 
 # Show the form

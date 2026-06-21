@@ -12,7 +12,7 @@ from langchain_community.document_loaders import (
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_community.vectorstores import FAISS
-from einstein_ai.utils import logger
+from einstein_ai.utils import logger, get_history_dir
 
 # Load HF_TOKEN and potentially source URLs from environment file
 load_dotenv("HF_TOKEN.env")
@@ -26,10 +26,11 @@ def get_online_sources():
     if os.path.exists("SOURCES.env"):
         with open("SOURCES.env", "r") as f:
             for line in f:
-                if line.strip() and not line.startswith("#"):
+                line = line.strip()
+                if line and not line.startswith("#"):
                     try:
                         # Format: NAME=URL|T1,T2
-                        parts = line.strip().split("=", 1)
+                        parts = line.split("=", 1)
                         if len(parts) == 2:
                             val_parts = parts[1].split("|")
                             url = val_parts[0]
@@ -45,25 +46,20 @@ def cache_web_content(url, name=None):
     if not os.path.exists(cache_dir):
         os.makedirs(cache_dir)
 
-    # 1. Try to get filename from URL
     parsed_url = urlparse(url)
     url_filename = os.path.basename(parsed_url.path)
 
-    # 2. Use provided name if URL filename is empty or generic
     if not url_filename or url_filename in ['', '/']:
         if name:
             url_filename = name
         else:
             url_filename = "source_" + hashlib.md5(url.encode()).hexdigest()[:8]
 
-    # Ensure correct extension
     if url.lower().endswith(".pdf") and not url_filename.lower().endswith(".pdf"):
         url_filename += ".pdf"
     elif not any(url_filename.lower().endswith(ext) for ext in [".txt", ".pdf", ".html", ".htm"]):
-        # Default to txt if no known extension
         url_filename += ".txt"
 
-    # Create a safe filename
     safe_name = "".join([c for c in url_filename if c.isalnum() or c in (' ', '.', '_', '-')]).rstrip()
     cache_path = os.path.join(cache_dir, safe_name)
 
@@ -75,20 +71,6 @@ def cache_web_content(url, name=None):
     try:
         response = requests.get(url, stream=True)
         response.raise_for_status()
-
-        # Optionally try to get filename from Content-Disposition header
-        cd = response.headers.get('content-disposition')
-        if cd and 'filename=' in cd:
-            # Simple parsing of Content-Disposition
-            import re
-            fname = re.findall('filename=(.+)', cd)
-            if len(fname) > 0:
-                new_filename = fname[0].strip(' "')
-                new_safe_name = "".join([c for c in new_filename if c.isalnum() or c in (' ', '.', '_', '-')]).rstrip()
-                new_cache_path = os.path.join(cache_dir, new_safe_name)
-                # If the header gives us a better name, we use it
-                cache_path = new_cache_path
-
         with open(cache_path, "wb") as f:
             for chunk in response.iter_content(chunk_size=8192):
                 f.write(chunk)
@@ -99,6 +81,7 @@ def cache_web_content(url, name=None):
 
 def ingest_docs(custom_source=None):
     data_path = "einstein_ai/data/"
+    history_path = get_history_dir()
     if not os.path.exists(data_path):
         os.makedirs(data_path)
 
@@ -120,28 +103,28 @@ def ingest_docs(custom_source=None):
         for source in online_sources:
             cache_web_content(source['url'], source['name'])
 
-    # 3. Load all documents recursively from data_path (including cache)
-    logger.info(f"Loading all documents from {data_path}...")
+    # 3. Load all documents recursively from data_path AND history_path
+    logger.info(f"Loading documents from {data_path} and {history_path}...")
     documents = []
 
     # Text files - Recursive
-    txt_loader = DirectoryLoader(
-        data_path,
-        glob="**/*.txt",
-        loader_cls=TextLoader,
-        loader_kwargs={"encoding": "utf-8"},
-        recursive=True
-    )
-    documents.extend(txt_loader.load())
+    for path in [data_path, history_path]:
+        txt_loader = DirectoryLoader(
+            path,
+            glob="**/*.txt",
+            loader_cls=TextLoader,
+            loader_kwargs={"encoding": "utf-8"},
+            recursive=True
+        )
+        documents.extend(txt_loader.load())
 
-    # PDF files - Recursive
-    pdf_loader = DirectoryLoader(
-        data_path,
-        glob="**/*.pdf",
-        loader_cls=PyPDFLoader,
-        recursive=True
-    )
-    documents.extend(pdf_loader.load())
+        pdf_loader = DirectoryLoader(
+            path,
+            glob="**/*.pdf",
+            loader_cls=PyPDFLoader,
+            recursive=True
+        )
+        documents.extend(pdf_loader.load())
 
     if not documents:
         logger.warning("No documents found to index.")
@@ -155,7 +138,7 @@ def ingest_docs(custom_source=None):
     logger.info("Initializing embeddings model...")
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
 
-    logger.info("Building FAISS index...")
+    logger.info("Building FAISS index (Memory Update)...")
     db = FAISS.from_documents(texts, embeddings)
     db.save_local("einstein_ai/faiss_index")
     logger.info(f"Successfully created FAISS index with {len(texts)} chunks.")
