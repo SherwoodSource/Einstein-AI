@@ -3,6 +3,7 @@ import os
 import sys
 import subprocess
 from datetime import datetime
+from urllib.parse import urlparse
 
 # Set level to INFO for production-like behavior
 def setup_logger(name, log_file="einstein_ai.log", level=logging.INFO):
@@ -73,3 +74,31 @@ def log_interaction(user_input, bot_response):
     with open(filepath, "a", encoding="utf-8") as f:
         f.write(f"[{timestamp}] USER: {user_input}\n")
         f.write(f"[{timestamp}] EINSTEIN: {bot_response}\n\n")
+
+def add_online_source(url, triggers=""):
+    """Adds a new online source to SOURCES.env with trigger words"""
+    env_file = "SOURCES.env"
+
+    # Extract name from URL
+    parsed_url = urlparse(url)
+    name = os.path.basename(parsed_url.path)
+    if not name or name in ['', '/']:
+        name = "WebSource_" + datetime.now().strftime('%H%M%S')
+
+    # Strip extension for the name
+    name = os.path.splitext(name)[0].upper().replace("-", "_").replace(".", "_")
+
+    line = f"{name}={url}|{triggers}\n"
+
+    # Check if SOURCES.env exists, if not create with header
+    if not os.path.exists(env_file):
+        with open(env_file, "w") as f:
+            f.write("# Einstein AI Sources and Trigger Words\n")
+            f.write("# Format: SOURCE_NAME=URL|TRIGGER1,TRIGGER2,...\n\n")
+
+    # Append the new source
+    with open(env_file, "a") as f:
+        f.write(line)
+
+    logger.info(f"Added new source '{name}' to {env_file}")
+    return name
