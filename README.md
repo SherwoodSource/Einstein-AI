@@ -3,18 +3,6 @@ An artificial intelligence containing all of Einstein's ideas, philosophies, and
 
 This project implements a Retrieval-Augmented Generation (RAG) chatbot that allows you to interact with the writings and philosophies of Albert Einstein. It uses LangChain, FAISS for vector storage, and the TinyLlama-1.1B-Chat model.
 
-## Project Structure
-
-- `einstein_ai/`: Core package containing the AI logic and data.
-  - `data/`: Directory for source text files.
-  - `einstein_bot.py`: Logic for initializing the LLM and RAG chain.
-  - `ingest.py`: Script to process text data into the FAISS index.
-- `main.py`: Interactive CLI entry point.
-- `requirements.txt`: List of Python dependencies.
-- `SOURCES.env`: Configuration for online text sources and triggers.
-- `EinsteinAI.ps1`: PowerShell-based graphical interface.
-- `EinsteinAI.bat`: Silent launcher for the Windows GUI.
-
 ## Prerequisites
 
 - Python 3.10 to 3.13 (Recommended)
@@ -39,6 +27,12 @@ If you are on Windows, ensure you have the **Microsoft C++ Build Tools** install
    ```
 5. (Optional) Review `SOURCES.env` to manage online Einstein sources and trigger words.
 
+## Running the Bot (GUI Mode - Windows)
+
+On Windows, you can launch the bot with a clean graphical interface and no background terminal:
+- Double-click **`EinsteinAI.bat`**
+- Or run `powershell -File EinsteinAI.ps1`
+
 ## Setup (Data Ingestion)
 
 Before running the bot for the first time, or if you update the source texts in `einstein_ai/data/`, you need to build the FAISS vector index:
@@ -59,11 +53,17 @@ python main.py
 
 Type your questions at the prompt. To end the session and close the bot, type `exit`, `quit`, `bye`, or `stop`.
 
-## Running the Bot (GUI Mode - Windows)
+## Project Structure
 
-On Windows, you can launch the bot with a clean graphical interface and no background terminal:
-- Double-click **`EinsteinAI.bat`**
-- Or run `powershell -File EinsteinAI.ps1`
+- `einstein_ai/`: Core package containing the AI logic and data.
+  - `data/`: Directory for source text files.
+  - `einstein_bot.py`: Logic for initializing the LLM and RAG chain.
+  - `ingest.py`: Script to process text data into the FAISS index.
+- `main.py`: Interactive CLI entry point.
+- `requirements.txt`: List of Python dependencies.
+- `SOURCES.env`: Configuration for online text sources and triggers.
+- `EinsteinAI.ps1`: PowerShell-based graphical interface.
+- `EinsteinAI.bat`: Silent launcher for the Windows GUI.
 
 ## Troubleshooting
 

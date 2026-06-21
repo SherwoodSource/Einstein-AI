@@ -2,5 +2,7 @@ __pycache__/
 *.py[cod]
 *$py.class
 bot_error.log
+einstein_ai.log
 einstein_ai/faiss_index/
+einstein_ai/data/cache/
 HF_TOKEN.env

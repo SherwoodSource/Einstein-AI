@@ -11,8 +11,29 @@ from transformers import pipeline, AutoModelForCausalLM, AutoTokenizer
 import torch
 from einstein_ai.utils import logger
 
-# Load HF_TOKEN and potentially source URLs from environment file
+# Load environment files
 load_dotenv("HF_TOKEN.env")
+load_dotenv("SOURCES.env")
+
+def get_online_sources():
+    """Parses SOURCES.env for Einstein source URLs and triggers"""
+    sources = []
+    if os.path.exists("SOURCES.env"):
+        with open("SOURCES.env", "r") as f:
+            for line in f:
+                line = line.strip()
+                if line and not line.startswith("#"):
+                    try:
+                        # Format: NAME=URL|T1,T2
+                        parts = line.split("=", 1)
+                        if len(parts) == 2:
+                            val_parts = parts[1].split("|")
+                            url = val_parts[0]
+                            triggers = val_parts[1].split(",") if len(val_parts) > 1 else []
+                            sources.append({"name": parts[0], "url": url, "triggers": triggers})
+                    except Exception as e:
+                        logger.error(f"Error parsing line in SOURCES.env: {line}. {e}")
+    return sources
 
 def get_einstein_bot():
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
@@ -27,7 +48,6 @@ def get_einstein_bot():
     )
 
     # Define generation config to avoid any mixing of parameters
-    # This is the most surgical way to avoid "both max_new_tokens and max_length set"
     model.generation_config.max_new_tokens = 256
     model.generation_config.max_length = 2048
     model.generation_config.temperature = 0.7
@@ -35,7 +55,6 @@ def get_einstein_bot():
     model.generation_config.pad_token_id = tokenizer.pad_token_id
     model.generation_config.eos_token_id = tokenizer.eos_token_id
 
-    # We update the model.config as well to ensure total consistency
     model.config.max_new_tokens = 256
 
     pipe = pipeline(
@@ -59,11 +78,13 @@ Context: {context}</s>
 
     prompt = PromptTemplate(template=template, input_variables=["context", "question"])
 
-    # Set k=3 to stay within 2048 token limit
+    # Standard retriever with fixed context limit
+    retriever = db.as_retriever(search_kwargs={"k": 4})
+
     chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
-        retriever=db.as_retriever(search_kwargs={"k": 3}),
+        retriever=retriever,
         return_source_documents=False,
         chain_type_kwargs={"prompt": prompt}
     )
